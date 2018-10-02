@@ -20,10 +20,7 @@
  */
 typedef struct {
     secp256k1_scratch_space *scratch;
-    size_t k;
     size_t n;
-    int taproot_tweaked;
-    unsigned char taproot_tweak[32];
     secp256k1_pubkey *musig_pks;
     secp256k1_pubkey combined_pk;
 } secp256k1_musig_config;
@@ -114,29 +111,6 @@ SECP256K1_API int secp256k1_musig_partial_signature_parse(
     const unsigned char *in32
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
 
-/** A pointer to a function to generate a Taproot tweak
- *
- * Returns: 1 if a nonce was successfully generated. 0 will cause signing to fail.
- * Out:  tweak32: pointer to a 32-byte array to be filled by the function.
- * In:        pk: public key to start from
- *        commit: pointer to a 32-byte message to hash into the tweak
- *          data: Arbitrary data pointer that is passed through.
- *
- * Except for test cases, this function should hash the public key, commit,
- * and auxilliary data.
- */
-typedef int (*secp256k1_taproot_hash_function)(
-    unsigned char *tweak32,
-    const secp256k1_pubkey *pk,
-    const unsigned char *commit,
-    void *data
-);
-
-/** An implementation of a Taproot hash function that simply hashes
- *  the pubkey followed by the script to commit to. May be called
- *  directly for use with single_sign. */
-SECP256K1_API extern const secp256k1_taproot_hash_function secp256k1_taproot_hash_default;
-
 /** Creates a MuSig configuration from an array of public keys and a Taproot commitment.
  *
  * The musig_config object must be destroyed with `secp256k1_musig_config_destroy`.
@@ -167,11 +141,7 @@ SECP256K1_API int secp256k1_musig_init(
     secp256k1_scratch_space *scratch,
     secp256k1_musig_config *musig_config,
     const secp256k1_pubkey *pks,
-    const size_t k,
-    const size_t n,
-    const unsigned char *commitment,
-    secp256k1_taproot_hash_function hashfp,
-    void *hdata
+    const size_t n
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4);
 
 /** Destroy a secp256k1 MuSig configuration.
@@ -259,6 +229,7 @@ SECP256K1_API int secp256k1_musig_multisig_generate_nonce(
  * `secp256k1_musig_set_nonce` will mark the signer actually present, upon
  * receipt of a nonce consistent with the precommitment.
  *
+ * TODO: remove musig_pubkey_combine
  * For n-of-n signatures, the parameter `pubkey` should be one of the `tweaked_pk`
  * pubkeys that was output from `secp256k1_musig_pubkey_combine` during the setup
  * phase. For k-of-n signatures, `pubkey` should be taken from the `pubkey` array
@@ -409,10 +380,8 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_musig_partial_sig_combi
     secp256k1_schnorrsig *sig,
     const secp256k1_musig_config *musig_config,
     const secp256k1_musig_partial_signature *partial_sig,
-    size_t n_sigs,
-    const secp256k1_musig_signer_data *data,
     const secp256k1_musig_validation_aux *aux
-) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(6) SECP256K1_ARG_NONNULL(7);
+) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5);
 
 /** Extracts a secret from a complete signature and an earlier-received adaptor signature
  *
@@ -433,8 +402,7 @@ SECP256K1_API int secp256k1_musig_adaptor_signature_extract_secret(
     const secp256k1_musig_config *musig_config,
     const secp256k1_schnorrsig *full_sig,
     const secp256k1_musig_partial_signature *partial_sig,
-    const secp256k1_musig_partial_signature *adaptor_sig,
-    const secp256k1_musig_validation_aux *aux
+    const secp256k1_musig_partial_signature *adaptor_sig
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(6);
 
 /** Uses a secret to adapt an adaptor signature into a partial signature
