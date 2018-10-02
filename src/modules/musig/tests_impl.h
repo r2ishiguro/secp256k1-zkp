@@ -138,12 +138,12 @@ void musig_api_tests(secp256k1_scratch_space *scratch) {
     CHECK(secp256k1_musig_multisig_generate_nonce(sign, secnon3, &pubnon3, noncom3, &tweak_sk[2], msg, commit) == 1);
 
     ecount = 0;
-    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[0], &tweaked_pks[0], noncom1) == 1);
-    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[0], NULL, noncom1) == 0);
+    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[0], &musig_config, 0, noncom1) == 1);
+    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[0], NULL, 0, noncom1) == 0);
     CHECK(ecount == 1);
-    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[1], &tweaked_pks[1], noncom2) == 1);
+    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[1], &musig_config, 1, noncom2) == 1);
     CHECK(ecount == 1);
-    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[2], &tweaked_pks[2], noncom3) == 1);
+    CHECK(secp256k1_musig_signer_data_initialize(none, &signer_data[2], &musig_config, 2, noncom3) == 1);
 
     ecount = 0;
     CHECK(secp256k1_musig_set_nonce(none, &signer_data[0], &pubnon1) == 1);
@@ -255,8 +255,6 @@ void scriptless_atomic_swap(secp256k1_scratch_space *scratch) {
     secp256k1_pubkey combine_pk_b;
     secp256k1_musig_config musig_config_a;
     secp256k1_musig_config musig_config_b;
-    secp256k1_pubkey musig_pk_a[2];
-    secp256k1_pubkey musig_pk_b[2];
     unsigned char secnon_a[2][32];
     unsigned char secnon_b[2][32];
     unsigned char noncommit_a[2][32];
@@ -296,12 +294,10 @@ void scriptless_atomic_swap(secp256k1_scratch_space *scratch) {
     CHECK(secp256k1_musig_multisig_generate_nonce(ctx, secnon_b[0], &pubnon_b[0], noncommit_b[0], &tweak_seckey_b[0], msg32_b, seed));
     CHECK(secp256k1_musig_multisig_generate_nonce(ctx, secnon_b[1], &pubnon_b[1], noncommit_b[1], &tweak_seckey_b[1], msg32_b, seed));
 
-    CHECK(secp256k1_musig_tweaked_pubkeys(ctx, musig_pk_a, &musig_config_a));
-    secp256k1_musig_signer_data_initialize(ctx, &data_a[0], &musig_pk_a[0], noncommit_a[0]);
-    secp256k1_musig_signer_data_initialize(ctx, &data_a[1], &musig_pk_a[1], noncommit_a[1]);
-    CHECK(secp256k1_musig_tweaked_pubkeys(ctx, musig_pk_b, &musig_config_b));
-    secp256k1_musig_signer_data_initialize(ctx, &data_b[0], &musig_pk_b[0], noncommit_b[0]);
-    secp256k1_musig_signer_data_initialize(ctx, &data_b[1], &musig_pk_b[1], noncommit_b[1]);
+    secp256k1_musig_signer_data_initialize(ctx, &data_a[0], &musig_config_a, 0, noncommit_a[0]);
+    secp256k1_musig_signer_data_initialize(ctx, &data_a[1], &musig_config_a, 1, noncommit_a[1]);
+    secp256k1_musig_signer_data_initialize(ctx, &data_b[0], &musig_config_b, 0, noncommit_b[0]);
+    secp256k1_musig_signer_data_initialize(ctx, &data_b[1], &musig_config_b, 1, noncommit_b[1]);
     CHECK(secp256k1_musig_set_nonce(ctx, &data_a[0], &pubnon_a[0]));
     CHECK(secp256k1_musig_set_nonce(ctx, &data_a[1], &pubnon_a[1]));
     CHECK(secp256k1_musig_set_nonce(ctx, &data_b[0], &pubnon_b[0]));

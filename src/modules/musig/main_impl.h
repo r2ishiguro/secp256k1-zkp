@@ -169,15 +169,15 @@ int secp256k1_musig_tweak_secret_key(const secp256k1_context* ctx, secp256k1_mus
     return 1;
 }
 
-int secp256k1_musig_signer_data_initialize(const secp256k1_context* ctx, secp256k1_musig_signer_data *data, const secp256k1_pubkey *pubkey, const unsigned char *noncommit) {
+int secp256k1_musig_signer_data_initialize(const secp256k1_context* ctx, secp256k1_musig_signer_data *data, const secp256k1_musig_config *musig_config, size_t index, const unsigned char *noncommit) {
     (void) ctx;
     ARG_CHECK(data != NULL);
-    ARG_CHECK(pubkey != NULL);
+    ARG_CHECK(musig_config != NULL);
+    ARG_CHECK(noncommit != NULL);
     memset(data, 0, sizeof(*data));
-    memcpy(&data->pubkey, pubkey, sizeof(*pubkey));
-    if (noncommit != NULL) {
-        memcpy(data->noncommit, noncommit, 32);
-    }
+    data->index = index;
+    memcpy(&data->pubkey, &musig_config->musig_pks[index], sizeof(secp256k1_pubkey));
+    memcpy(data->noncommit, noncommit, 32);
     return 1;
 }
 
