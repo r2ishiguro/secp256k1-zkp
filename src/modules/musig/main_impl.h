@@ -11,6 +11,33 @@
 #include "include/secp256k1_musig.h"
 #include "hash.h"
 
+/* TODO: remove */
+static int taproot_hash_default(unsigned char *tweak32, const secp256k1_pubkey *pk, const unsigned char *commit, void *data) {
+    unsigned char buf[33];
+    size_t buflen = sizeof(buf);
+    secp256k1_ge pkg;
+    secp256k1_sha256 sha;
+
+    (void) data;
+
+    secp256k1_pubkey_load(NULL, &pkg, pk);
+    secp256k1_eckey_pubkey_serialize(&pkg, buf, &buflen, 1);
+
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, buf, 33);
+    secp256k1_sha256_write(&sha, commit, 32);
+    secp256k1_sha256_finalize(&sha, tweak32);
+
+    secp256k1_sha256_initialize(&sha);
+    secp256k1_sha256_write(&sha, tweak32, 32);
+    secp256k1_sha256_finalize(&sha, tweak32);
+
+    return 1;
+}
+
+/* TODO: remove */
+const secp256k1_taproot_hash_function secp256k1_taproot_hash_default = taproot_hash_default;
+
 /* Partial signature data structure:
  * 32 bytes partial s
  * 1 byte indicating whether the public nonce should be flipped
@@ -19,24 +46,6 @@
  * 32 bytes message hash
  * 32 bytes R.x
  */
-
-int secp256k1_musig_signature_serialize(const secp256k1_context* ctx, unsigned char *out64, const secp256k1_musig_signature* sig) {
-    (void) ctx;
-    VERIFY_CHECK(ctx != NULL);
-    ARG_CHECK(out64 != NULL);
-    ARG_CHECK(sig != NULL);
-    memcpy(out64, sig->data, 64);
-    return 1;
-}
-
-int secp256k1_musig_signature_parse(const secp256k1_context* ctx, secp256k1_musig_signature* sig, const unsigned char *in64) {
-    (void) ctx;
-    VERIFY_CHECK(ctx != NULL);
-    ARG_CHECK(sig != NULL);
-    ARG_CHECK(in64 != NULL);
-    memcpy(sig->data, in64, 64);
-    return 1;
-}
 
 static void secp256k1_musig_coefficient(secp256k1_scalar *r, const unsigned char *ell, size_t idx) {
     secp256k1_sha256 sha;
@@ -280,6 +289,77 @@ int secp256k1_musig_set_nonce(const secp256k1_context* ctx, secp256k1_musig_sign
     return 1;
 }
 
+/* `data` is just used as a binary array indicating which signers are present, i.e.
+ * which ones to exclude from the interpolation. */
+/* TODO: remove */
+static void secp256k1_musig_lagrange_coefficient(secp256k1_scalar *r, const secp256k1_musig_signer_data *data, size_t n_indices, size_t coeff_index, int invert) {
+    size_t i;
+    int kofn;
+    secp256k1_scalar num;
+    secp256k1_scalar den;
+    secp256k1_scalar indexs;
+
+    /* Special-case the n-of-n case where all our "Lagrange coefficients" should be 1,
+     * since in that case we do a simple sum rather than polynomial interpolation */
+    kofn = 0;
+    for (i = 0; i < n_indices; i++) {
+        if (data[i].present == 0) {
+            kofn = 1;
+            break;
+        }
+    }
+    if (!kofn) {
+        secp256k1_scalar_set_int(r, 1);
+        return;
+    }
+
+    secp256k1_scalar_set_int(&num, 1);
+    secp256k1_scalar_set_int(&den, 1);
+    secp256k1_scalar_set_int(&indexs, (int) coeff_index + 1);
+    for (i = 0; i < n_indices; i++) {
+        secp256k1_scalar mul;
+        if ((data[i].present == 0) || i == coeff_index) {
+            continue;
+        }
+
+        secp256k1_scalar_set_int(&mul, (int) i + 1);
+        secp256k1_scalar_negate(&mul, &mul);
+        secp256k1_scalar_mul(&num, &num, &mul);
+
+        secp256k1_scalar_add(&mul, &mul, &indexs);
+        secp256k1_scalar_mul(&den, &den, &mul);
+    }
+
+    if (invert) {
+        secp256k1_scalar_inverse_var(&num, &num);
+    } else {
+        secp256k1_scalar_inverse_var(&den, &den);
+    }
+    secp256k1_scalar_mul(r, &num, &den);
+}
+
+
+typedef struct {
+    size_t index;
+    size_t n_signers;
+    const secp256k1_musig_signer_data *data;
+} secp256k1_musig_nonce_ecmult_context;
+
+static int secp256k1_musig_nonce_ecmult_callback(secp256k1_scalar *sc, secp256k1_ge *pt, size_t idx, void *data) {
+    secp256k1_musig_nonce_ecmult_context *ctx = (secp256k1_musig_nonce_ecmult_context *) data;
+
+    (void) idx;
+    while (!ctx->data[ctx->index].present) {
+        ctx->index++;
+    }
+    secp256k1_musig_lagrange_coefficient(sc, ctx->data, ctx->n_signers, ctx->index, 0);
+    if (!secp256k1_pubkey_load(NULL, pt, &ctx->data[ctx->index].pubnon)) {
+        return 0;
+    }
+    ctx->index++;
+    return 1;
+}
+
 int secp256k1_musig_partial_sign(const secp256k1_context* ctx, secp256k1_scratch_space *scratch, secp256k1_musig_partial_signature *partial_sig, secp256k1_musig_validation_aux *aux, unsigned char *secnon, const secp256k1_musig_config *musig_config, const secp256k1_musig_secret_key *seckey, const unsigned char *msg32, const secp256k1_musig_signer_data *data, size_t my_index, const unsigned char *sec_adaptor) {
     secp256k1_musig_nonce_ecmult_context ecmult_data;
     unsigned char buf[33];
@@ -384,7 +464,7 @@ int secp256k1_musig_partial_sign(const secp256k1_context* ctx, secp256k1_scratch
     return 1;
 }
 
-int secp256k1_musig_partial_sig_combine(const secp256k1_context* ctx, secp256k1_musig_signature *sig, const secp256k1_musig_config *musig_config, const secp256k1_musig_partial_signature *partial_sig, size_t n_sigs, const secp256k1_musig_signer_data *data, const secp256k1_musig_validation_aux *aux) {
+int secp256k1_musig_partial_sig_combine(const secp256k1_context* ctx, secp256k1_schnorrsig *sig, const secp256k1_musig_config *musig_config, const secp256k1_musig_partial_signature *partial_sig, size_t n_sigs, const secp256k1_musig_signer_data *data, const secp256k1_musig_validation_aux *aux) {
     size_t i, j;
     secp256k1_scalar s;
     secp256k1_ge rp;
@@ -445,7 +525,7 @@ int secp256k1_musig_partial_sig_combine(const secp256k1_context* ctx, secp256k1_
     return 1;
 }
 
-int secp256k1_musig_adaptor_signature_extract_secret(const secp256k1_context* ctx, unsigned char *sec_adaptor, const secp256k1_musig_config *musig_config, const secp256k1_musig_signature *full_sig, const secp256k1_musig_partial_signature *partial_sig, const secp256k1_musig_partial_signature *adaptor_sig, const secp256k1_musig_validation_aux *aux) {
+int secp256k1_musig_adaptor_signature_extract_secret(const secp256k1_context* ctx, unsigned char *sec_adaptor, const secp256k1_musig_config *musig_config, const secp256k1_schnorrsig *full_sig, const secp256k1_musig_partial_signature *partial_sig, const secp256k1_musig_partial_signature *adaptor_sig, const secp256k1_musig_validation_aux *aux) {
     secp256k1_scalar s;
     secp256k1_scalar term;
     int overflow;
@@ -520,7 +600,7 @@ int secp256k1_musig_adaptor_signature_adapt(const secp256k1_context* ctx, secp25
     return 1;
 }
 
-int secp256k1_musig_adaptor_signature_apply_secret(const secp256k1_context* ctx, secp256k1_musig_signature *partial_sig, const secp256k1_musig_signature *adaptor_sig, const unsigned char *sec_adaptor) {
+int secp256k1_musig_adaptor_signature_apply_secret(const secp256k1_context* ctx, secp256k1_schnorrsig *partial_sig, const secp256k1_schnorrsig *adaptor_sig, const unsigned char *sec_adaptor) {
     secp256k1_scalar s;
     secp256k1_scalar term;
     int overflow;
@@ -601,33 +681,41 @@ int secp256k1_musig_partial_sig_verify(const secp256k1_context* ctx, const secp2
     secp256k1_ge rp;
     int overflow;
 
+    printf("0\n");
     VERIFY_CHECK(ctx != NULL);
     ARG_CHECK(secp256k1_ecmult_context_is_built(&ctx->ecmult_ctx));
     ARG_CHECK(partial_sig != NULL);
     ARG_CHECK(data != NULL);
     ARG_CHECK(aux != NULL);
 
+    printf("A\n");
     if (!data->present) {
         return 0;
     }
+    printf("b\n");
     secp256k1_scalar_set_b32(&s, partial_sig->data, &overflow);
     if (overflow) {
         return 0;
     }
+    printf("c\n");
     secp256k1_scalar_set_b32(&e, aux->data, &overflow);
     if (overflow) {
         return 0;
     }
+    printf("d\n");
     if (!secp256k1_pubkey_load(ctx, &rp, &data->pubnon)) {
         return 0;
     }
 
+    printf("e\n");
     if (!secp256k1_schnorrsig_real_verify(ctx, &rj, &s, &e, &data->pubkey)) {
         return 0;
     }
+    printf("f\n");
     if (!partial_sig->data[32]) {
         secp256k1_ge_neg(&rp, &rp);
     }
+    printf("g\n");
     secp256k1_gej_add_ge_var(&rj, &rj, &rp, NULL);
 
     return secp256k1_gej_is_infinity(&rj);
