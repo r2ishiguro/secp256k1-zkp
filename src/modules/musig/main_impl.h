@@ -134,15 +134,6 @@ int secp256k1_musig_pubkey(const secp256k1_context* ctx, secp256k1_pubkey *combi
     return 1;
 }
 
-int secp256k1_musig_tweaked_pubkeys(const secp256k1_context* ctx, secp256k1_pubkey *musig_pks, const secp256k1_musig_config *musig_config) {
-    VERIFY_CHECK(ctx != NULL);
-    ARG_CHECK(musig_pks != NULL);
-    ARG_CHECK(musig_config != NULL);
-
-    memcpy(musig_pks, musig_config->musig_pks, musig_config->n * sizeof(secp256k1_pubkey));
-    return 1;
-}
-
 int secp256k1_musig_tweak_secret_key(const secp256k1_context* ctx, secp256k1_musig_secret_key *out, const unsigned char *seckey, const secp256k1_pubkey *pk, size_t np, size_t my_index) {
     int overflow;
     unsigned char ell[32];

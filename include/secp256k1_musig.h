@@ -154,18 +154,6 @@ SECP256K1_API int secp256k1_musig_pubkey(
     const secp256k1_musig_config *musig_config
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
 
-/** Get the individual MuSig-tweaked pubkey from the MuSig configuration
- *
- *  Args:        ctx: pointer to a context object (cannot be NULL)
- *  Out:   musig_pks: `n` MuSig-tweaked public keys (cannot be NULL)
- *  In: musig_config: MuSig configuration for `musig_pks` (cannot be NULL)
- */
-SECP256K1_API int secp256k1_musig_tweaked_pubkeys(
-    const secp256k1_context* ctx,
-    secp256k1_pubkey *musig_pks,
-    const secp256k1_musig_config *musig_config
-) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
-
 /** Computes a MuSig multiplier and multiplies a secret key by it.
  *
  * Returns 1 on success, 0 if any input was invalid.
