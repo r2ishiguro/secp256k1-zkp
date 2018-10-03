@@ -1,8 +1,7 @@
 #ifndef SECP256K1_MUSIG_H
 #define SECP256K1_MUSIG_H
 
-/** Opaque data structure containing MuSig parameters, such as number of keys, threshold, combined
- *  public keys and Taproot commitment.
+/** Opaque data structure containing MuSig parameters, such as the public keys.
  *
  *  The exact representation of data inside is implementation defined and not
  *  guaranteed to be portable between different platforms or versions.
@@ -64,6 +63,7 @@ typedef struct {
  * completed with that signer's actual public nonce. The structure is used only
  * for a single signing attempt.
  *
+ *   present: flag indicating whether the signer provided its nonce
  *     index: index of the signer in the MuSig. Must be consistent with the order of the pubkeys in
  *            secp256k1_musig_init
  *    pubkey: public key that the signer will use for partial signing
@@ -110,14 +110,9 @@ SECP256K1_API int secp256k1_musig_partial_signature_parse(
     const unsigned char *in32
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
 
-/** Creates a MuSig configuration from an array of public keys and a Taproot commitment.
+/** Creates a MuSig configuration from an array of public keys.
  *
  * The musig_config object must be destroyed with `secp256k1_musig_config_destroy`.
- *
- * Users who want to use Taproot without MuSig, i.e. a single-signer pay-to-contract,
- * are better off manually computing the tweak and using `secp256k1_ec_privkey_tweak_add`
- * and `secp256k1_ec_pubkey_tweak_add` to modify their keys. Otherwise they will need
- * to use the full multisigning API which would be pointlessly inconvenient.
  *
  * Returns 1 on success, 0 on failure.
  *
@@ -212,19 +207,11 @@ SECP256K1_API int secp256k1_musig_multisig_generate_nonce(
     const unsigned char *rngseed
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(6);
 
-/** Initializes a signer data structure, initially as "missing", at signing-time
- *
- * If the signer in question should be present, `noncommit` should be provided
- * and set to the signer's nonce commitment. After all nonce commitments have
- * been received, the signers start to send out nonces.
- * `secp256k1_musig_set_nonce` will mark the signer actually present, upon
- * receipt of a nonce consistent with the precommitment.
- *
- * TODO: remove musig_pubkey_combine
- * For n-of-n signatures, the parameter `pubkey` should be one of the `tweaked_pk`
- * pubkeys that was output from `secp256k1_musig_pubkey_combine` during the setup
- * phase. For k-of-n signatures, `pubkey` should be taken from the `pubkey` array
- * output by `secp256k1_musig_verify_shard`.
+/** Initializes a signer data structure. `noncommit` should be provided and set
+ * to the signer's nonce commitment. After all nonce commitments have been
+ * received, the signers start to send out nonces. `secp256k1_musig_set_nonce`
+ * will mark the signer actually present, upon receipt of a nonce consistent
+ * with the precommitment.
  *
  * Always returns 1.
  *  Args:        ctx: pointer to a context object (cannot be NULL)
