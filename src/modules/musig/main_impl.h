@@ -427,32 +427,6 @@ int secp256k1_musig_adaptor_signature_adapt(const secp256k1_context* ctx, secp25
     return 1;
 }
 
-int secp256k1_musig_adaptor_signature_apply_secret(const secp256k1_context* ctx, secp256k1_schnorrsig *partial_sig, const secp256k1_schnorrsig *adaptor_sig, const unsigned char *sec_adaptor) {
-    secp256k1_scalar s;
-    secp256k1_scalar term;
-    int overflow;
-    (void) ctx;
-
-    VERIFY_CHECK(ctx != NULL);
-    ARG_CHECK(partial_sig != NULL);
-    ARG_CHECK(adaptor_sig != NULL);
-    ARG_CHECK(sec_adaptor != NULL);
-
-    secp256k1_scalar_set_b32(&s, &adaptor_sig->data[32], &overflow);
-    if (overflow) {
-        return 0;
-    }
-    secp256k1_scalar_set_b32(&term, sec_adaptor, &overflow);
-    if (overflow) {
-        return 0;
-    }
-    secp256k1_scalar_add(&s, &s, &term);
-
-    memcpy(&partial_sig->data[0], &adaptor_sig->data[0], 32);
-    secp256k1_scalar_get_b32(&partial_sig->data[32], &s);
-    return 1;
-}
-
 int secp256k1_musig_adaptor_signature_extract(const secp256k1_context* ctx, secp256k1_pubkey *pub_adaptor, const secp256k1_musig_partial_signature *partial_sig, const secp256k1_musig_signer_data *data, const secp256k1_musig_validation_aux *aux) {
     secp256k1_scalar s;
     secp256k1_scalar e;
