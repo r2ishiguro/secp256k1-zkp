@@ -14,11 +14,22 @@
 /* Partial signature data structure:
  * 32 bytes partial s
  * 1 byte indicating whether the public nonce should be flipped
- *
- * Aux data structure:
- * 32 bytes message hash
- * 32 bytes R.x
  */
+int secp256k1_musig_partial_signature_serialize(const secp256k1_context* ctx, unsigned char *out33, const secp256k1_musig_partial_signature* sig) {
+    VERIFY_CHECK(ctx != NULL);
+    ARG_CHECK(out33 != NULL);
+    ARG_CHECK(sig != NULL);
+    memcpy(out33, sig->data, 33);
+    return 1;
+}
+
+int secp256k1_musig_partial_signature_parse(const secp256k1_context* ctx, secp256k1_musig_partial_signature* sig, const unsigned char *in33) {
+    VERIFY_CHECK(ctx != NULL);
+    ARG_CHECK(sig != NULL);
+    ARG_CHECK(in33 != NULL);
+    memcpy(sig->data, in33, 33);
+    return 1;
+}
 
 static void secp256k1_musig_coefficient(secp256k1_scalar *r, const unsigned char *ell, size_t idx) {
     secp256k1_sha256 sha;
@@ -230,6 +241,11 @@ int secp256k1_musig_set_nonce(const secp256k1_context* ctx, secp256k1_musig_sign
     return 1;
 }
 
+/*
+ * Aux data structure:
+ * 32 bytes message hash
+ * 32 bytes R.x
+ */
 int secp256k1_musig_partial_sign(const secp256k1_context* ctx, secp256k1_scratch_space *scratch, secp256k1_musig_partial_signature *partial_sig, secp256k1_musig_validation_aux *aux, unsigned char *secnon, const secp256k1_musig_config *musig_config, const secp256k1_musig_secret_key *seckey, const unsigned char *msg32, const secp256k1_musig_signer_data *data, size_t my_index, const unsigned char *sec_adaptor) {
     unsigned char buf[33];
     size_t bufsize = 33;

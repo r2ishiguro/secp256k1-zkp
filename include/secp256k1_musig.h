@@ -82,12 +82,12 @@ typedef struct {
  *
  *  Returns: 1
  *  Args:    ctx: a secp256k1 context object
- *  Out:   out32: pointer to a 32-byte array to store the serialized signature
+ *  Out:   out33: pointer to a 33-byte array to store the serialized signature
  *  In:      sig: pointer to the signature
  */
 SECP256K1_API int secp256k1_musig_partial_signature_serialize(
     const secp256k1_context* ctx,
-    unsigned char *out32,
+    unsigned char *out33,
     const secp256k1_musig_partial_signature* sig
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
 
@@ -96,9 +96,7 @@ SECP256K1_API int secp256k1_musig_partial_signature_serialize(
  *  Returns: 1 when the signature could be parsed, 0 otherwise.
  *  Args:    ctx: a secp256k1 context object
  *  Out:     sig: pointer to a signature object
- *  In:     in32: pointer to the 32-byte signature to be parsed
- *
- * The partial signature is a 32-byte big-endian scalar.
+ *  In:     in33: pointer to the 33-byte signature to be parsed
  *
  * After the call, sig will always be initialized. If parsing failed or the
  * encoded numbers are out of range, signature validation with it is
@@ -106,8 +104,8 @@ SECP256K1_API int secp256k1_musig_partial_signature_serialize(
  */
 SECP256K1_API int secp256k1_musig_partial_signature_parse(
     const secp256k1_context* ctx,
-    secp256k1_schnorrsig* sig,
-    const unsigned char *in32
+    secp256k1_musig_partial_signature* sig,
+    const unsigned char *in33
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3);
 
 /** Creates a MuSig configuration from an array of public keys.

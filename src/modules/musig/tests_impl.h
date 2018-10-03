@@ -23,8 +23,9 @@ void musig_api_tests(secp256k1_scratch_space *scratch) {
     unsigned char noncom1[32];
     unsigned char noncom2[32];
     unsigned char noncom3[32];
+    unsigned char in33[33];
+    unsigned char out33[33];
     secp256k1_pubkey pk[3];
-    secp256k1_pubkey tweaked_pks[3];
     secp256k1_pubkey pubnon1;
     secp256k1_pubkey pubnon2;
     secp256k1_pubkey pubnon3;
@@ -86,14 +87,8 @@ void musig_api_tests(secp256k1_scratch_space *scratch) {
     CHECK(ecount == 1);
     CHECK(secp256k1_musig_pubkey(none, &combined_pk, NULL) == 0);
     CHECK(ecount == 2);
-    CHECK(secp256k1_musig_pubkey(none, &combined_pk, &musig_config) == 1);
 
-    ecount = 0;
-    CHECK(secp256k1_musig_tweaked_pubkeys(none, NULL, &musig_config) == 0);
-    CHECK(ecount == 1);
-    CHECK(secp256k1_musig_tweaked_pubkeys(none, tweaked_pks, NULL) == 0);
-    CHECK(ecount == 2);
-    CHECK(secp256k1_musig_tweaked_pubkeys(none, tweaked_pks, &musig_config) == 1);
+    CHECK(secp256k1_musig_pubkey(none, &combined_pk, &musig_config) == 1);
 
     /** key setup **/
     ecount = 0;
@@ -110,7 +105,7 @@ void musig_api_tests(secp256k1_scratch_space *scratch) {
     CHECK(secp256k1_musig_tweak_secret_key(none, &tweak_sk[2], sk3, pk, 3, 2) == 1);
 
     /*
-     * For the API tests we will only generate `signer_data` once and use it for both signers,
+     * For the API tests we will only generate `signer_data` once and use it for all signers,
      * since it contains only public data that should be the same for all signers.
      */
     ecount = 0;
@@ -158,7 +153,22 @@ void musig_api_tests(secp256k1_scratch_space *scratch) {
     CHECK(secp256k1_musig_set_nonce(none, &signer_data[0], &pubnon1) == 1);
     CHECK(secp256k1_musig_set_nonce(none, &signer_data[1], &pubnon2) == 1);
     CHECK(secp256k1_musig_set_nonce(none, &signer_data[2], &pubnon3) == 1);
+
+    memset(in33, 1, 33);
+    ecount = 0;
+    CHECK(secp256k1_musig_partial_signature_parse(none, NULL, in33) == 0);
+    CHECK(ecount == 1);
+    CHECK(secp256k1_musig_partial_signature_parse(none, &partial_sig[0], NULL) == 0);
     CHECK(ecount == 2);
+    CHECK(secp256k1_musig_partial_signature_parse(none, &partial_sig[0], in33) == 1);
+
+    ecount = 0;
+    CHECK(secp256k1_musig_partial_signature_serialize(none, NULL, &partial_sig[0]) == 0);
+    CHECK(ecount == 1);
+    CHECK(secp256k1_musig_partial_signature_serialize(none, out33, NULL) == 0);
+    CHECK(ecount == 2);
+    CHECK(secp256k1_musig_partial_signature_serialize(none, out33, &partial_sig[0]) == 1);
+    CHECK(memcmp(in33, out33, 33) == 0);
 
     ecount = 0;
     CHECK(secp256k1_musig_partial_sign(none, scratch, &partial_sig[0], &aux, secnon1, &musig_config, &tweak_sk[0], msg, signer_data, 0, NULL) == 0);
