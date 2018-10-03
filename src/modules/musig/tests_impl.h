@@ -314,7 +314,7 @@ void scriptless_atomic_swap(secp256k1_scratch_space *scratch) {
     CHECK(secp256k1_musig_partial_sign(ctx, scratch, &partial_sig_b[1], &aux_b, secnon_b[1], &musig_config_b, &tweak_seckey_b[1], msg32_b, data_b, 1, NULL));
 
     /* Step 4: Signer 0 signs to take B-coins, combines signatures and publishes */
-    CHECK(secp256k1_musig_partial_sign(ctx, scratch, &partial_sig_b[0], &aux_b, secnon_b[0], &musig_config_b, &tweak_seckey_b[0], msg32_b, data_b, 0, NULL));
+    CHECK(secp256k1_musig_adaptor_signature_adapt(ctx, &partial_sig_b[0], &adaptor_sig_b, sec_adaptor));
     CHECK(secp256k1_musig_partial_sig_combine(ctx, &final_sig_b, &musig_config_b, partial_sig_b, &aux_b) == 1);
     CHECK(secp256k1_musig_pubkey(ctx, &combine_pk_b, &musig_config_b));
     CHECK(secp256k1_schnorrsig_verify(ctx, &final_sig_b, msg32_b, &combine_pk_b) == 1);

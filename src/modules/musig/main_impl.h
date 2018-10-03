@@ -330,9 +330,7 @@ int secp256k1_musig_partial_sign(const secp256k1_context* ctx, secp256k1_scratch
     secp256k1_scalar_clear(&sk);
     secp256k1_scalar_clear(&k);
     /* Set secnon to zero such that consecutive partial signing attempts fail */
-    if (sec_adaptor == NULL) {
-        secp256k1_scalar_get_b32(secnon, &k);
-    }
+    secp256k1_scalar_get_b32(secnon, &k);
 
     return 1;
 }

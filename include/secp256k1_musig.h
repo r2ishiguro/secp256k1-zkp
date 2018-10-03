@@ -259,10 +259,7 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_musig_set_nonce(
  *                unique rngseed. secnon is a nonce and therefore only to be used ONCE, no more.
  *                One shall be the number of uses, and the number of uses shall be one. Once the
  *                nonce is used in musig_partial_sign it shall be never reused. Failure to do this
- *                will result in the secret key being leaked. If adaptor signatures are produced
- *                then the nonce is effectively the tuple (secnon, sec_adaptor) and every tuple MUST
- *                only be used once. In practice that means calling partial_sign with (secnon,
- *                sec_adaptor) and then with (secnon, NULL).
+ *                will result in the secret key being leaked.
  *  In: musig_config: MuSig configuration (cannot be NULL)
  *            seckey: secret signing key to use (cannot be NULL)
  *             msg32: 32-byte message to be signed (cannot be NULL)
