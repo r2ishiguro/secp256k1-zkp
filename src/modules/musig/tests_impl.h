@@ -317,7 +317,7 @@ void scriptless_atomic_swap(secp256k1_scratch_space *scratch) {
     CHECK(secp256k1_musig_partial_sign(ctx, scratch, &adaptor_sig_a, &aux_a, secnon_a[0], &musig_config_a, &tweak_seckey_a[0], msg32_a, data_a, 0, sec_adaptor));
     CHECK(secp256k1_musig_partial_sign(ctx, scratch, &adaptor_sig_b, &aux_b, secnon_b[0], &musig_config_b, &tweak_seckey_b[0], msg32_b, data_b, 0, sec_adaptor));
 
-    /* Step 3: Signer 1 receives adaptor signatures, checks that they used the same tweak, and signs to send B-coins */
+    /* Step 3: Signer 1 receives adaptor signatures, checks that they used the same public adaptor, and signs to send B-coins */
     CHECK(secp256k1_musig_adaptor_signature_extract(ctx, &pub_adaptor_a, &adaptor_sig_a, &data_a[0], &aux_a));
     CHECK(secp256k1_musig_adaptor_signature_extract(ctx, &pub_adaptor_b, &adaptor_sig_b, &data_b[0], &aux_b));
     CHECK(memcmp(&pub_adaptor_a, &pub_adaptor_b, sizeof(pub_adaptor_a)) == 0); /* TODO the API says we're not allowed to compare pubkeys like this, but c'mon */

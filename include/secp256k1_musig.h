@@ -292,32 +292,34 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_musig_partial_sig_verif
     const secp256k1_musig_validation_aux *aux
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4);
 
-/** Extracts the public tweak implied by an adaptor signature
+/** Extracts the public adaptor implied by an adaptor signature
  *
- *  Returns: 1: adaptor signature was correctly encoded and had nontrivial tweak
- *           0: invalid adaptor signature or valid (untweaked) partial signature
+ *  Returns: 1: adaptor signature was correctly encoded and had nontrivial
+ *              adaptor
+ *           0: invalid adaptor signature or invalid adaptor
  *  Args:         ctx: pointer to a context object, initialized for verification (cannot be NULL)
- *  Out:     pub_tweak: public tweak (cannot be NULL)
- *  In:   partial_sig: adaptor signature to extract tweak from (cannot be NULL)
+ *  Out:  pub_adaptor: public adaptor point (cannot be NULL)
+ *  In:   partial_sig: adaptor signature to extract public adaptor from (cannot be NULL)
  *               data: signer data for this signer (not the whole array) (cannot be NULL)
  *                aux: auxillary partial-signature validation data (cannot be NULL)
  */
 SECP256K1_API int secp256k1_musig_adaptor_signature_extract(
     const secp256k1_context* ctx,
-    secp256k1_pubkey *pub_tweak,
+    secp256k1_pubkey *pub_adaptor,
     const secp256k1_musig_partial_signature *partial_sig,
     const secp256k1_musig_signer_data *data,
     const secp256k1_musig_validation_aux *aux
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5);
 
-/** Converts an adaptor signature to a partial signature by adding a given tweak
+/** Converts an adaptor signature to a partial signature by adding a given
+ *  secret adaptor
  *
- *  Returns: 1: signature and tweak contained valid values
+ *  Returns: 1: signature and secret adaptor contained valid values
  *           0: otherwise
  *  Args:         ctx: pointer to a context object, initialized for verification (cannot be NULL)
  *  Out:  partial_sig: partial signature to produce (cannot be NULL)
- *  In:   adaptor_sig: adaptor signature to tweak (cannot be NULL)
- *        sec_adaptor: tweak to apply
+ *  In:   adaptor_sig: adaptor signature to tweak with secret adaptor (cannot be NULL)
+ *        sec_adaptor: secret adaptor to add to the adaptor signature
  */
 SECP256K1_API int secp256k1_musig_adaptor_signature_adapt(
     const secp256k1_context* ctx,
