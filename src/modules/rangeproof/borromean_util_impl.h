@@ -23,4 +23,17 @@ secp256k1_borromean_sz_closure secp256k1_borromean_sz_closure_const(uint64_t c) 
     return ret;
 }
 
+static int secp256k1_borromean_sc_closure_blob_call(const secp256k1_borromean_sc_closure* self, secp256k1_scalar* out, size_t index) {
+    int overflow;
+    secp256k1_scalar_set_b32(out, &self->data[32 * index], &overflow);
+    return !(overflow || secp256k1_scalar_is_zero(out));
+}
+
+secp256k1_borromean_sc_closure secp256k1_borromean_sc_closure_blob(const unsigned char* blob) {
+    secp256k1_borromean_sc_closure ret;
+    ret.data = blob;
+    ret.call = secp256k1_borromean_sc_closure_blob_call;
+    return ret;
+}
+
 #endif
