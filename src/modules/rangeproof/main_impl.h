@@ -365,7 +365,7 @@ int secp256k1_rangeproof_verify_value(const secp256k1_context* ctx, const unsign
     secp256k1_sha256_write(&sha2, tmpch, 33);
     secp256k1_rangeproof_serialize_point(tmpch, &genp);
     secp256k1_sha256_write(&sha2, tmpch, 33);
-    secp256k1_sha256_write(&sha2, proof, offset); /* lol we commit to one extra byte here */
+    secp256k1_sha256_write(&sha2, proof, offset);
     secp256k1_sha256_finalize(&sha2, pp_comm);
 
     /* ... feed this into our hash */

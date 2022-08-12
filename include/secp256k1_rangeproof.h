@@ -297,7 +297,7 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_rangeproof_info(
  *        proof: pointer to character array with the proof.
  *        plen: length of proof in bytes.
  *        value: value being claimed for the Pedersen commitment
- *        commit: the Pedersen commitment whose value is being proven
+ *        commit: the Pedersen commitment whose value is being verified
  *        gen: additional generator 'h'
  */
 SECP256K1_API int secp256k1_rangeproof_verify_value(
