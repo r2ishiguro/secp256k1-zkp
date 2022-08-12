@@ -418,7 +418,7 @@ int secp256k1_rangeproof_create_value(const secp256k1_context* ctx, unsigned cha
     ARG_CHECK(commit != NULL);
     ARG_CHECK(gen != NULL);
 
-    if (*plen < 73 || (value == 0 && *plen < 65)) {
+    if (*plen < (value == 0 ? 65 : 73)) {
         return 0;
     }
 
