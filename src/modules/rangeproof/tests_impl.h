@@ -623,12 +623,12 @@ static void test_single_value_proof(uint64_t val) {
         proof, plen,
         NULL, 0,
         secp256k1_generator_h
-    ));
+    ) == 1);
     CHECK(val_out == val);
     CHECK(min_val_out == val);
     CHECK(max_val_out == val);
     CHECK(m_len_out == 0);
-    CHECK(memcmp(blind, blind_out, 32) == 0);
+    CHECK(secp256k1_memcmp_var(blind, blind_out, 32) == 0);
     for (m_len_out = 0; m_len_out < sizeof(message_out); m_len_out++) {
         CHECK(message_out[m_len_out] == 0);
     }
@@ -785,7 +785,7 @@ void test_rangeproof_fixed_vectors(void) {
         secp256k1_generator_h
     ));
 
-    CHECK(memcmp(blind, blind_1, 32) == 0);
+    CHECK(secp256k1_memcmp_var(blind, blind_1, 32) == 0);
     CHECK(value == 86);
     CHECK(min_value == 86);
     CHECK(max_value == 25586);
@@ -856,12 +856,12 @@ void test_rangeproof_fixed_vectors(void) {
         secp256k1_generator_h
     ));
 
-    CHECK(memcmp(blind, blind_2, 32) == 0);
+    CHECK(secp256k1_memcmp_var(blind, blind_2, 32) == 0);
     CHECK(value == 11);
     CHECK(min_value == 0);
     CHECK(max_value == 15);
     CHECK(m_len == 192); /* length of the sidechannel in the proof */
-    CHECK(memcmp(message, message_2, sizeof(message_2)) == 0);
+    CHECK(secp256k1_memcmp_var(message, message_2, sizeof(message_2)) == 0);
     for (i = sizeof(message_2); i < m_len; i++) {
         /* No message encoded in this vector */
         CHECK(message[i] == 0);
@@ -914,7 +914,7 @@ void test_rangeproof_fixed_vectors(void) {
         NULL, 0,
         secp256k1_generator_h
     ));
-    CHECK(memcmp(blind, blind_3, 32) == 0);
+    CHECK(secp256k1_memcmp_var(blind, blind_3, 32) == 0);
     CHECK(value == UINT64_MAX);
     CHECK(min_value == UINT64_MAX);
     CHECK(max_value == UINT64_MAX);
@@ -948,6 +948,8 @@ void run_rangeproof_tests(void) {
     test_single_value_proof(0);
     test_single_value_proof(12345678);
     test_single_value_proof(UINT64_MAX);
+    test_single_value_proof(secp256k1_testrand32());
+    test_single_value_proof(((uint64_t) secp256k1_testrand32() << 32) + secp256k1_testrand32());
 
     test_rangeproof_fixed_vectors();
     test_pedersen_commitment_fixed_vector();
