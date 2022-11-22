@@ -353,7 +353,7 @@ int secp256k1_bulletproofs_rangeproof_uncompressed_prove(
 	secp256k1_ge asset_genp;
 
 	secp256k1_generator_load(&asset_genp, asset_gen);
-	return rangeproof_uncompressed_prove(ctx, gens, &secp256k1_ge_const_g /* h */, &asset_genp /* g */, proof, plen n_bits, value, min_value, commit, blind, nonce, enc_data, extra_commit, extra_commit_len);
+	return bulletproofs_rangeproof_uncompressed_prove(ctx, gens, &secp256k1_ge_const_g /* h */, &asset_genp /* g */, proof, plen, n_bits, value, min_value, commit, blind, nonce, enc_data, extra_commit, extra_commit_len);
 }
 
 int secp256k1_bulletproofs_rangeproof_uncompressed_elgamal_prove(
@@ -375,7 +375,7 @@ int secp256k1_bulletproofs_rangeproof_uncompressed_elgamal_prove(
 	secp256k1_ge h;
 
 	secp256k1_generator_load(&h, genh);
-	return rangeproof_uncompressed_prove(ctx, gens, h, &secp256k1_ge_const_g /* g */, proof, plen n_bits, value, min_value, commit, blind, nonce, enc_data, extra_commit, extra_commit_len);
+	return bulletproofs_rangeproof_uncompressed_prove(ctx, gens, &h, &secp256k1_ge_const_g /* g */, proof, plen, n_bits, value, min_value, commit, blind, nonce, enc_data, extra_commit, extra_commit_len);
 }
 
 int secp256k1_bulletproofs_rangeproof_uncompressed_verify(
@@ -393,13 +393,14 @@ int secp256k1_bulletproofs_rangeproof_uncompressed_verify(
 	secp256k1_ge asset_genp;
 
 	secp256k1_generator_load(&asset_genp, asset_gen);
-	return bulletproofs_rangeproof_uncompressed_verify(ctx, scratch, gens, &asset_gen /* g */, proof, plen, min_value, commit, extra_commit, commit_len);
+	return bulletproofs_rangeproof_uncompressed_verify(ctx, scratch, gens, &secp256k1_ge_const_g /* h */, &asset_genp /* g */, proof, plen, min_value, commit, extra_commit, extra_commit_len);
 }
 
 int secp256k1_bulletproofs_rangeproof_uncompressed_elgamal_verify(
     const secp256k1_context* ctx,
     secp256k1_scratch_space *scratch,
     const secp256k1_bulletproofs_generators* gens,
+    const secp256k1_generator* genh,
     const unsigned char* proof,
     const size_t plen,
     const uint64_t min_value,
@@ -407,7 +408,10 @@ int secp256k1_bulletproofs_rangeproof_uncompressed_elgamal_verify(
     const unsigned char* extra_commit,
     size_t extra_commit_len
 ) {
-	return bulletproofs_rangeproof_uncompressed_verify(ctx, scratch, gens, &secp256k1_ge_const_g /* g */, proof, plen, min_value, commit, extra_commit, commit_len);
+	secp256k1_ge h;
+
+	secp256k1_generator_load(&h, genh);
+	return bulletproofs_rangeproof_uncompressed_verify(ctx, scratch, gens, &h, &secp256k1_ge_const_g /* g */, proof, plen, min_value, commit, extra_commit, extra_commit_len);
 }
 
 #endif

@@ -491,6 +491,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     const uint64_t n_bits,
     const uint64_t min_value,
     const secp256k1_ge* commitp,
+    const secp256k1_ge* h,
     const secp256k1_ge* g,
     const secp256k1_ge* ap,
     const secp256k1_ge* sp,
@@ -528,7 +529,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     }
 
     /* Commit to all input data: min value, pedersen commit, asset generator, extra_commit */
-    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, g, extra_commit, extra_commit_len);
+    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, h, g, extra_commit, extra_commit_len);
     /* Then y, z will be the hash of the first 65 bytes of the proof */
     secp256k1_sha256_initialize(&sha256);
     secp256k1_sha256_write(&sha256, commit, 32);

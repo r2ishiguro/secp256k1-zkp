@@ -184,13 +184,14 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_bulletproofs_rangeproof
     const secp256k1_context* ctx,
     secp256k1_scratch_space *scratch,
     const secp256k1_bulletproofs_generators* gens,
+    const secp256k1_generator *genh,
     const unsigned char* proof,
     const size_t plen,
     const uint64_t min_value,
     const secp256k1_pedersen_commitment* commit,
     const unsigned char* extra_commit,
     size_t extra_commit_len
-) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(7);
+) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(8);
 
 # ifdef __cplusplus
 }
