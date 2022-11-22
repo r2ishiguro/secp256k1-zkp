@@ -19,12 +19,6 @@
  *    bytes 96-160: lr_generator data
  */
 
-/* Generators (paper -> implementation):
- *    g -> asset_gen
- *    h -> default secp256k1 generator
- *    *g*, *h* vectors -> gens
- */
-
 /* Step 0 of the proof.
  * Uses the value but not the blinding factor. Takes the complete commitment,
  * but only to put it into the hash.
@@ -33,14 +27,14 @@
  * Updates the state to include the hashes y and z.
  */
 static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
-    const secp256k1_ecmult_gen_context* ecmult_gen_ctx,
     secp256k1_bulletproofs_prover_context* prover_ctx,
     unsigned char* output,
     const size_t n_bits,
     const uint64_t value,
     const uint64_t min_value,
     const secp256k1_ge* commitp,
-    const secp256k1_ge* asset_genp,
+    const secp256k1_ge* h,
+    const secp256k1_ge* g,
     const secp256k1_bulletproofs_generators* gens,
     const unsigned char* nonce,
     const secp256k1_scalar* enc_data,
@@ -77,7 +71,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
     }
 
     /* Commit to all input data: min value, pedersen commit, asset generator, extra_commit */
-    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, asset_genp, extra_commit, extra_commit_len);
+    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, h, g, extra_commit, extra_commit_len);
 
     /* Compute alpha and rho, adding encrypted data to alpha (effectively adding
      * it to mu, which is one of the scalars in the final proof) */
@@ -85,7 +79,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
     secp256k1_scalar_add(&alpha, &alpha, enc_data);
 
     /* Compute and output A */
-    secp256k1_ecmult_gen(ecmult_gen_ctx, &gej, &alpha);
+    secp256k1_ecmult_const(&gej, h, &alpha, 256);
     for (i = 0; i < n_bits; i++) {
         secp256k1_ge aterm = gens->gens[2 * i + 1];
         int al = !!((value - min_value) & (1ull << i));
@@ -102,7 +96,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
     secp256k1_fe_get_b32(&output[1], &ge.x);
 
     /* Compute and output S */
-    secp256k1_ecmult_gen(ecmult_gen_ctx, &gej, &rho);
+    secp256k1_ecmult_const(&gej, h, &rho, 256);
     for (i = 0; i < n_bits; i++) {
         secp256k1_ge sterm;
         secp256k1_gej stermj;
@@ -155,13 +149,13 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
  * Updates the state to include the hash x.
  */
 static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
-    const secp256k1_ecmult_gen_context* ecmult_gen_ctx,
     secp256k1_bulletproofs_prover_context* prover_ctx,
     unsigned char* output,
     const size_t n_bits,
     const uint64_t value,
     const uint64_t min_value,
-    const secp256k1_ge* asset_genp,
+    const secp256k1_ge* h,
+    const secp256k1_ge* g,
     const unsigned char* nonce
 ) {
     secp256k1_bulletproofs_bulletproofs_lrgen lr_gen;
@@ -246,9 +240,9 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
     secp256k1_scalar_add(&t2, &t2, &t1);
 
     /* Compute and output Ti := t_i*A + tau_i*G for i = 1 */
-    secp256k1_ecmult_const(&gej, asset_genp, &t1, 256);
+    secp256k1_ecmult_const(&gej, g, &t1, 256);
     secp256k1_ge_set_gej(&ge, &gej);
-    secp256k1_ecmult_gen(ecmult_gen_ctx, &gej, &tau1);
+    secp256k1_ecmult_const(&gej, h, &tau1, 256);
     secp256k1_gej_add_ge(&gej, &gej, &ge);
     secp256k1_ge_set_gej(&ge, &gej);
     secp256k1_fe_normalize_var(&ge.x);
@@ -257,9 +251,9 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
     secp256k1_fe_get_b32(&output[1], &ge.x);
 
     /* Compute and output Ti := t_i*A + tau_i*G for i = 2 */
-    secp256k1_ecmult_const(&gej, asset_genp, &t2, 256);
+    secp256k1_ecmult_const(&gej, g, &t2, 256);
     secp256k1_ge_set_gej(&ge, &gej);
-    secp256k1_ecmult_gen(ecmult_gen_ctx, &gej, &tau2);
+    secp256k1_ecmult_const(&gej, h, &tau2, 256);
     secp256k1_gej_add_ge(&gej, &gej, &ge);
     secp256k1_ge_set_gej(&ge, &gej);
     secp256k1_fe_normalize_var(&ge.x);
@@ -404,7 +398,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step3_impl(
 typedef struct {
     const secp256k1_ge *t1p;
     const secp256k1_ge *t2p;
-    const secp256k1_ge *asset_genp;
+    const secp256k1_ge *g;
     const secp256k1_ge *commitp;
     secp256k1_scalar neg_t;
     secp256k1_scalar z_sq;
@@ -417,7 +411,7 @@ static int secp256k1_bulletproofs_eq65_cb(secp256k1_scalar *sc, secp256k1_ge *pt
     const secp256k1_bulletproofs_eq65_data* ctx = (const secp256k1_bulletproofs_eq65_data*) data;
     switch(idx) {
         case 0:  /* (delta - t - min*z^2) H */
-            *pt = *ctx->asset_genp;
+            *pt = *ctx->g;
             *sc = ctx->delta_y_z__minus_t__minus_mv_z_sq;
             break;
         case 1:  /* z^2 V */
@@ -497,7 +491,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     const uint64_t n_bits,
     const uint64_t min_value,
     const secp256k1_ge* commitp,
-    const secp256k1_ge* asset_genp,
+    const secp256k1_ge* g,
     const secp256k1_ge* ap,
     const secp256k1_ge* sp,
     const secp256k1_ge* t1p,
@@ -534,7 +528,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     }
 
     /* Commit to all input data: min value, pedersen commit, asset generator, extra_commit */
-    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, asset_genp, extra_commit, extra_commit_len);
+    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, g, extra_commit, extra_commit_len);
     /* Then y, z will be the hash of the first 65 bytes of the proof */
     secp256k1_sha256_initialize(&sha256);
     secp256k1_sha256_write(&sha256, commit, 32);
@@ -570,7 +564,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
         secp256k1_bulletproofs_eq65_data eq65;
         eq65.t1p = t1p;
         eq65.t2p = t2p;
-        eq65.asset_genp = asset_genp;
+        eq65.g = g;
         eq65.commitp = commitp;
         secp256k1_scalar_sqr(&eq65.z_sq, &z);
         /**/

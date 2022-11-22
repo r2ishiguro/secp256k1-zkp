@@ -138,6 +138,23 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_bulletproofs_rangeproof
     size_t extra_commit_len
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(9) SECP256K1_ARG_NONNULL(10) SECP256K1_ARG_NONNULL(11);
 
+SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_bulletproofs_rangeproof_uncompressed_elgamal_prove(
+    const secp256k1_context* ctx,
+    const secp256k1_bulletproofs_generators* gens,
+    const secp256k1_generator* h,
+    unsigned char* proof,
+    size_t* plen,
+    const size_t n_bits,
+    const uint64_t value,
+    const uint64_t min_value,
+    const secp256k1_pedersen_commitment* commit,
+    const unsigned char* blind,
+    const unsigned char* nonce,
+    const unsigned char* enc_data,
+    const unsigned char* extra_commit,
+    size_t extra_commit_len
+) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(9) SECP256K1_ARG_NONNULL(10) SECP256K1_ARG_NONNULL(11);
+
 /** Verifies an uncompressed rangeproof. Returns 1 on success, 0 on failure.
  *  Args:      ctx: pointer to a context object
  *         scratch: pointer to a scratch space
@@ -162,6 +179,18 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_bulletproofs_rangeproof
     const unsigned char* extra_commit,
     size_t extra_commit_len
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(5) SECP256K1_ARG_NONNULL(8);
+
+SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_bulletproofs_rangeproof_uncompressed_elgamal_verify(
+    const secp256k1_context* ctx,
+    secp256k1_scratch_space *scratch,
+    const secp256k1_bulletproofs_generators* gens,
+    const unsigned char* proof,
+    const size_t plen,
+    const uint64_t min_value,
+    const secp256k1_pedersen_commitment* commit,
+    const unsigned char* extra_commit,
+    size_t extra_commit_len
+) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(7);
 
 # ifdef __cplusplus
 }
