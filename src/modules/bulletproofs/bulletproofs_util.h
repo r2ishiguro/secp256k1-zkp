@@ -53,19 +53,25 @@ static void secp256k1_bulletproofs_commit_initial_data(
     const uint64_t n_bits,
     const uint64_t min_value,
     const secp256k1_ge* commitp,
-    const secp256k1_ge* asset_genp,
+    const secp256k1_ge* g,
+    const secp256k1_ge* h,
     const unsigned char* extra_commit,
     size_t extra_commit_len
 ) {
     unsigned char scratch[65];
     secp256k1_sha256 sha256;
-    secp256k1_bulletproofs_sha256_tagged_commitment(&sha256);
+    /* secp256k1_bulletproofs_sha256_tagged_commitment(&sha256); */
+    secp256k1_sha256_initialize(&sha256);
     secp256k1_bulletproofs_le64(scratch, n_bits);
     secp256k1_sha256_write(&sha256, scratch, 8);
     secp256k1_bulletproofs_le64(scratch, min_value);
     secp256k1_sha256_write(&sha256, scratch, 8);
-    secp256k1_bulletproofs_serialize_points(scratch, commitp, asset_genp);
-    secp256k1_sha256_write(&sha256, scratch, 65);
+    secp256k1_fe_get_b32(scratch, &commitp->x);
+    secp256k1_sha256_write(&sha256, scratch, 32);
+    secp256k1_fe_get_b32(scratch, &g->x);
+    secp256k1_sha256_write(&sha256, scratch, 32);
+    secp256k1_fe_get_b32(scratch, &h->x);
+    secp256k1_sha256_write(&sha256, scratch, 32);
     if (extra_commit != NULL) {
         secp256k1_bulletproofs_le64(scratch, (uint64_t) extra_commit_len);
         secp256k1_sha256_write(&sha256, scratch, 8);

@@ -12,6 +12,15 @@
 
 #include "modules/bulletproofs/bulletproofs_util.h"
 
+static void print_n(const unsigned char *data, size_t n, const char *msg)
+{
+	if (msg != NULL)
+		printf("%s: ", msg);
+	for (size_t i = 0; i < n; i++)
+		printf("%02x", data[i]);
+	printf("\n");
+}
+
 /* Prover context data:
  *    bytes 0-32:   x (hash challenge)
  *    bytes 32-64:  y (hash challenge)
@@ -49,6 +58,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
     secp256k1_ge ge;
     size_t i;
     int overflow;
+    unsigned char nbits1 = (unsigned char)n_bits;
 
     memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
     memset(output, 0, 65);
@@ -71,7 +81,8 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
     }
 
     /* Commit to all input data: min value, pedersen commit, asset generator, extra_commit */
-    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, h, g, extra_commit, extra_commit_len);
+    /* secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, h, g, extra_commit, extra_commit_len); */
+    secp256k1_fe_get_b32(commit, &commitp->x);
 
     /* Compute alpha and rho, adding encrypted data to alpha (effectively adding
      * it to mu, which is one of the scalars in the final proof) */
@@ -118,8 +129,9 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
 
     /* get challenges y and z, store them in the prover context */
     secp256k1_sha256_initialize(&sha256);
-    secp256k1_sha256_write(&sha256, commit, 32);
-    secp256k1_sha256_write(&sha256, output, 65);
+    secp256k1_sha256_write(&sha256, commit, 32);	/* V */
+    secp256k1_sha256_write(&sha256, &nbits1, 1);	/* n */
+    secp256k1_sha256_write(&sha256, &output[1], 64);	/* A.x + S.x */
     secp256k1_sha256_finalize(&sha256, &prover_ctx->data[32]);
     secp256k1_scalar_set_b32(&tmp_l, &prover_ctx->data[32], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&tmp_l)) {
@@ -127,9 +139,14 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
         memset(output, 0, 65);
         return 0;
     }
+    print_n(commit, 32, "V");
+    printf("n: %x\n", nbits1);
+    print_n(&output[1], 64, "A.x + S.x");
+    print_n(&prover_ctx->data[32], 32, "y");
 
     secp256k1_sha256_initialize(&sha256);
-    secp256k1_sha256_write(&sha256, &prover_ctx->data[32], 32);
+    secp256k1_sha256_write(&sha256, &output[1], 64);	/* A.x + S.x */
+    secp256k1_sha256_write(&sha256, &prover_ctx->data[32], 32);	/* y */
     secp256k1_sha256_finalize(&sha256, &prover_ctx->data[64]);
     secp256k1_scalar_set_b32(&tmp_l, &prover_ctx->data[64], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&tmp_l)) {
@@ -137,6 +154,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
         memset(output, 0, 65);
         return 0;
     }
+    print_n(&prover_ctx->data[64], 32, "z");
 
     /* Success */
     return 1;
@@ -263,8 +281,8 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
 
     /* get challenge x */
     secp256k1_sha256_initialize(&sha256);
-    secp256k1_sha256_write(&sha256, &prover_ctx->data[64], 32); /* z, which commits to all data from before this step */
-    secp256k1_sha256_write(&sha256, output, 65);
+    secp256k1_sha256_write(&sha256, &prover_ctx->data[64], 32); /* z, which commits to all data from before this step */	/* z */
+    secp256k1_sha256_write(&sha256, &output[1], 64);	/* T1.x + T2.x */
     secp256k1_sha256_finalize(&sha256, &prover_ctx->data[0]);
     secp256k1_scalar_set_b32(&tmps, &prover_ctx->data[0], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&tmps)) {
@@ -506,6 +524,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     secp256k1_scalar neg_tau_x, neg_mu;
     unsigned char commit[32];
     int overflow;
+    unsigned char nbits1 = (unsigned char)n_bits;
 
     /* Sanity checks */
     if (n_bits > 64) {
@@ -529,18 +548,21 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     }
 
     /* Commit to all input data: min value, pedersen commit, asset generator, extra_commit */
-    secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, h, g, extra_commit, extra_commit_len);
+    // secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, h, g, extra_commit, extra_commit_len);
+    secp256k1_fe_get_b32(commit, &commitp->x);
     /* Then y, z will be the hash of the first 65 bytes of the proof */
     secp256k1_sha256_initialize(&sha256);
-    secp256k1_sha256_write(&sha256, commit, 32);
-    secp256k1_sha256_write(&sha256, &proof[0], 65);
+    secp256k1_sha256_write(&sha256, commit, 32);	/* V */
+    secp256k1_sha256_write(&sha256, &nbits1, 1);	/* n */
+    secp256k1_sha256_write(&sha256, &proof[1], 64);	/* A.x + S.x */
     secp256k1_sha256_finalize(&sha256, commit);
     secp256k1_scalar_set_b32(&y, commit, &overflow);
     if (overflow || secp256k1_scalar_is_zero(&y)) {
         return 0;
     }
     secp256k1_sha256_initialize(&sha256);
-    secp256k1_sha256_write(&sha256, commit, 32);
+    secp256k1_sha256_write(&sha256, &proof[1], 64);	/* A.x + S.x */
+    secp256k1_sha256_write(&sha256, commit, 32);	/* y */
     secp256k1_sha256_finalize(&sha256, commit);
     secp256k1_scalar_set_b32(&z, commit, &overflow);
     if (overflow || secp256k1_scalar_is_zero(&z)) {
@@ -548,8 +570,8 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     }
     /* x additionally covers the next 65 bytes */
     secp256k1_sha256_initialize(&sha256);
-    secp256k1_sha256_write(&sha256, commit, 32);
-    secp256k1_sha256_write(&sha256, &proof[65], 65);
+    secp256k1_sha256_write(&sha256, commit, 32);	/* z */
+    secp256k1_sha256_write(&sha256, &proof[66], 64);	/* T1.x + T2.x */
     secp256k1_sha256_finalize(&sha256, commit);
     secp256k1_scalar_set_b32(&x, commit, &overflow);
     if (overflow || secp256k1_scalar_is_zero(&x)) {
