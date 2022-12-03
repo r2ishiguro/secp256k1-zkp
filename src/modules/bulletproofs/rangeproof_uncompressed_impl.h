@@ -12,13 +12,40 @@
 
 #include "modules/bulletproofs/bulletproofs_util.h"
 
+static void print_n1(const unsigned char *data, size_t n)
+{
+	for (size_t i = 0; i < n; i++)
+		fprintf(stderr, "%02x", data[i]);
+}
+
 static void print_n(const unsigned char *data, size_t n, const char *msg)
 {
 	if (msg != NULL)
-		printf("%s: ", msg);
-	for (size_t i = 0; i < n; i++)
-		printf("%02x", data[i]);
-	printf("\n");
+		fprintf(stderr, "%s: ", msg);
+	print_n1(data, n);
+	fprintf(stderr, "\n");
+}
+
+static void print_s(const secp256k1_scalar *s, const char *msg)
+{
+	unsigned char buf[32];
+
+	secp256k1_scalar_get_b32(buf, s);
+	print_n(buf, 32, msg);
+}
+
+static void print_g(const secp256k1_ge *g, const char *msg)
+{
+	unsigned char buf[32];
+
+	if (msg != NULL)
+		fprintf(stderr, "%s: ", msg);
+	secp256k1_fe_get_b32(buf, &g->x);
+	print_n1(buf, 32);
+	fprintf(stderr, ", ");
+	secp256k1_fe_get_b32(buf, &g->y);
+	print_n1(buf, 32);
+	fprintf(stderr, "\n");
 }
 
 /* Prover context data:
@@ -60,6 +87,9 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
     int overflow;
     unsigned char nbits1 = (unsigned char)n_bits;
 
+    print_g(g, "g");
+    print_g(h, "h");
+
     memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
     memset(output, 0, 65);
 
@@ -99,6 +129,9 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
         secp256k1_fe_cmov(&aterm.x, &gens->gens[2 * i].x, al);
         secp256k1_fe_cmov(&aterm.y, &gens->gens[2 * i].y, al);
         secp256k1_gej_add_ge(&gej, &gej, &aterm);
+
+	print_g(&gens->gens[2 * i], "G");
+	print_g(&gens->gens[2 * i + 1], "H");
     }
     secp256k1_ge_set_gej(&ge, &gej);
     secp256k1_fe_normalize_var(&ge.x);
@@ -140,7 +173,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
         return 0;
     }
     print_n(commit, 32, "V");
-    printf("n: %x\n", nbits1);
+    fprintf(stderr, "n: %x\n", nbits1);
     print_n(&output[1], 64, "A.x + S.x");
     print_n(&prover_ctx->data[32], 32, "y");
 
@@ -291,6 +324,24 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
         return 0;
     }
 
+    print_s(&tau1, "tau1");
+    print_s(&tau2, "tau2");
+    print_s(&t1, "t1");
+    print_s(&t2, "t2");
+    print_n(&output[1], 64, "T1.x + T2.x");
+    print_n(prover_ctx->data, 32, "x");
+    /* th = t0 + t1 x + t2 x^2 */
+    secp256k1_scalar x, th;
+    secp256k1_scalar_set_b32(&x, &prover_ctx->data[0], &overflow);
+    secp256k1_scalar_clear(&th);
+    secp256k1_scalar_mul(&t1, &t1, &x);
+    secp256k1_scalar_mul(&t2, &t2, &x);
+    secp256k1_scalar_mul(&t2, &t2, &x);
+    secp256k1_scalar_add(&th, &th, &t0);
+    secp256k1_scalar_add(&th, &th, &t1);
+    secp256k1_scalar_add(&th, &th, &t2);
+    print_s(&th, "t(x)");
+
     /* Success */
     return 1;
 }
@@ -347,12 +398,19 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step2_impl(
     secp256k1_scalar_add(&mu, &mu, &alpha);
 
     /* Negate taux and mu so the verifier doesn't have to */
+    /* @@ @$*(#&(@$%&)(*%&$@)$(*&)(&%)@*&)(@
     secp256k1_scalar_negate(&taux, &taux);
     secp256k1_scalar_negate(&mu, &mu);
+    */
 
     /* Success */
     secp256k1_scalar_get_b32(&output[0], &taux);
     secp256k1_scalar_get_b32(&output[32], &mu);
+
+    print_s(&alpha, "alpha");
+    print_s(blind, "beta");
+    print_n(output, 32, "Tau");
+    print_n(&output[32], 32, "Mu");
     return 1;
 }
 
@@ -542,10 +600,12 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_verify_impl(
     if (overflow || secp256k1_scalar_is_zero(&neg_tau_x)) {
         return 0;
     }
+    secp256k1_scalar_negate(&neg_tau_x, &neg_tau_x);
     secp256k1_scalar_set_b32(&neg_mu, &proof[162], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&neg_mu)) {
         return 0;
     }
+    secp256k1_scalar_negate(&neg_mu, &neg_mu);
 
     /* Commit to all input data: min value, pedersen commit, asset generator, extra_commit */
     // secp256k1_bulletproofs_commit_initial_data(commit, n_bits, min_value, commitp, h, g, extra_commit, extra_commit_len);

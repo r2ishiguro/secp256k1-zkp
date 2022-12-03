@@ -237,6 +237,17 @@ static int bulletproofs_rangeproof_uncompressed_prove(
         );
     }
 
+    secp256k1_scalar lr, l, r, t;
+    secp256k1_scalar_clear(&lr);
+    for (i = 0; i < n_bits; i++) {
+	    int overflow;
+	    secp256k1_scalar_set_b32(&l, &proof[194 + 64 * i], &overflow);
+	    secp256k1_scalar_set_b32(&r, &proof[194 + 64 * i + 32], &overflow);
+	    secp256k1_scalar_mul(&t, &l, &r);
+	    secp256k1_scalar_add(&lr, &lr, &t);
+    }
+    print_s(&lr, "Th");
+
     return ret;
 }
 
