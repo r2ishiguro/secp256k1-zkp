@@ -193,6 +193,10 @@ SECP256K1_API SECP256K1_WARN_UNUSED_RESULT int secp256k1_bulletproofs_rangeproof
     size_t extra_commit_len
 ) SECP256K1_ARG_NONNULL(1) SECP256K1_ARG_NONNULL(2) SECP256K1_ARG_NONNULL(3) SECP256K1_ARG_NONNULL(4) SECP256K1_ARG_NONNULL(8);
 
+SECP256K1_API ssize_t secp256k1_bulletproofs_rangeproof_step0(secp256k1_bulletproofs_prover_context *prover_ctx, unsigned char *proof, const secp256k1_bulletproofs_generators *gens, const secp256k1_ge *commit, unsigned int value, const unsigned char *nonce, int nbits);
+SECP256K1_API ssize_t secp256k1_bulletproofs_rangeproof_step1(secp256k1_bulletproofs_prover_context *prover_ctx, unsigned char *proof, unsigned int value, const unsigned char *challenge, const unsigned char *nonce, int nbits);
+SECP256K1_API ssize_t secp256k1_bulletproofs_rangeproof_step2(secp256k1_bulletproofs_prover_context *prover_ctx, unsigned char *proof, unsigned int value, const secp256k1_scalar *blind, const unsigned char *challenge, const unsigned char *nonce, int nbits);
+
 # ifdef __cplusplus
 }
 # endif

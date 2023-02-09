@@ -172,10 +172,12 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
         memset(output, 0, 65);
         return 0;
     }
+#if DEBUG_PRINT
     print_n(commit, 32, "V");
     fprintf(stderr, "n: %x\n", nbits1);
     print_n(&output[1], 64, "A.x + S.x");
     print_n(&prover_ctx->data[32], 32, "y");
+#endif
 
     secp256k1_sha256_initialize(&sha256);
     secp256k1_sha256_write(&sha256, &output[1], 64);	/* A.x + S.x */
@@ -187,7 +189,9 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
         memset(output, 0, 65);
         return 0;
     }
+#if DEBUG_PRINT
     print_n(&prover_ctx->data[64], 32, "z");
+#endif
 
     /* Success */
     return 1;
@@ -207,7 +211,8 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
     const uint64_t min_value,
     const secp256k1_ge* h,
     const secp256k1_ge* g,
-    const unsigned char* nonce
+    const unsigned char* nonce,
+    const unsigned char* challenge
 ) {
     secp256k1_bulletproofs_bulletproofs_lrgen lr_gen;
     secp256k1_sha256 sha256;
@@ -223,12 +228,12 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
     memset(output, 0, 65);
 
     /* Unpack challenges y and z from step 0 */
-    secp256k1_scalar_set_b32(&y, &prover_ctx->data[32], &overflow);
+    secp256k1_scalar_set_b32(&y, challenge != NULL ? challenge : &prover_ctx->data[32], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&y)) {
         memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
         return 0;
     }
-    secp256k1_scalar_set_b32(&z, &prover_ctx->data[64], &overflow);
+    secp256k1_scalar_set_b32(&z, challenge != NULL ? &challenge[32] : &prover_ctx->data[64], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&z)) {
         memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
         memset(output, 0, 65);
@@ -324,6 +329,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
         return 0;
     }
 
+#if DEBUG_PRINT
     print_s(&tau1, "tau1");
     print_s(&tau2, "tau2");
     print_s(&t1, "t1");
@@ -341,6 +347,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
     secp256k1_scalar_add(&th, &th, &t1);
     secp256k1_scalar_add(&th, &th, &t2);
     print_s(&th, "t(x)");
+#endif
 
     /* Success */
     return 1;
@@ -356,7 +363,8 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step2_impl(
     unsigned char* output,
     const unsigned char* nonce,
     const secp256k1_scalar* blind,
-    const secp256k1_scalar* enc_data
+    const secp256k1_scalar* enc_data,
+    const unsigned char *challenge
 ) {
     secp256k1_scalar alpha, rho;
     secp256k1_scalar tau1, tau2, taux, mu;
@@ -370,7 +378,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step2_impl(
     secp256k1_scalar_chacha20(&tau1, &tau2, nonce, 1);
 
     /* Extract challenges x and z */
-    secp256k1_scalar_set_b32(&x, &prover_ctx->data[0], &overflow);
+    secp256k1_scalar_set_b32(&x, challenge != NULL ? &challenge[64] : &prover_ctx->data[0], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&x)) {
         memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
         memset(output, 0, 64);
@@ -378,7 +386,7 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step2_impl(
     }
     secp256k1_scalar_mul(&xsq, &x, &x);
 
-    secp256k1_scalar_set_b32(&z, &prover_ctx->data[64], &overflow);
+    secp256k1_scalar_set_b32(&z, challenge != NULL ? &challenge[32] : &prover_ctx->data[64], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&z)) {
         memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
         memset(output, 0, 64);
@@ -424,26 +432,27 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step3_impl(
     size_t idx,
     const uint64_t value,
     const uint64_t min_value,
-    const unsigned char* nonce
+    const unsigned char* nonce,
+    const unsigned char* challenge
 ) {
     secp256k1_bulletproofs_bulletproofs_lrgen lr_gen;
     secp256k1_scalar x, y, z, l, r;
     int overflow;
 
     /* Extract challenges */
-    secp256k1_scalar_set_b32(&x, &prover_ctx->data[0], &overflow);
+    secp256k1_scalar_set_b32(&x, challenge != NULL ? &challenge[64] : &prover_ctx->data[0], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&x)) {
         memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
         memset(output, 0, 64);
         return 0;
     }
-    secp256k1_scalar_set_b32(&y, &prover_ctx->data[32], &overflow);
+    secp256k1_scalar_set_b32(&y, challenge != NULL ? &challenge[0] : &prover_ctx->data[32], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&y)) {
         memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
         memset(output, 0, 64);
         return 0;
     }
-    secp256k1_scalar_set_b32(&z, &prover_ctx->data[64], &overflow);
+    secp256k1_scalar_set_b32(&z, challenge != NULL ? &challenge[32] : &prover_ctx->data[64], &overflow);
     if (overflow || secp256k1_scalar_is_zero(&z)) {
         memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
         memset(output, 0, 64);
