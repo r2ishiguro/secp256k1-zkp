@@ -7,6 +7,8 @@
 #ifndef _SECP256K1_MODULE_BULLETPROOFS_RP_UNCOMPRESSED_
 #define _SECP256K1_MODULE_BULLETPROOFS_RP_UNCOMPRESSED_
 
+#define DEBUG_PRINT 1
+
 #include "group.h"
 #include "scalar.h"
 
@@ -415,10 +417,12 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step2_impl(
     secp256k1_scalar_get_b32(&output[0], &taux);
     secp256k1_scalar_get_b32(&output[32], &mu);
 
+#if DEBUG_PRINT
     print_s(&alpha, "alpha");
     print_s(blind, "beta");
     print_n(output, 32, "Tau");
     print_n(&output[32], 32, "Mu");
+#endif
     return 1;
 }
 

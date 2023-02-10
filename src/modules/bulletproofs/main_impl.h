@@ -430,18 +430,12 @@ int secp256k1_bulletproofs_rangeproof_uncompressed_elgamal_verify(
 	return bulletproofs_rangeproof_uncompressed_verify(ctx, scratch, gens, &h, &secp256k1_ge_const_g /* g */, proof, plen, min_value, commit, extra_commit, extra_commit_len);
 }
 
-ssize_t secp256k1_bulletproofs_rangeproof_step0(secp256k1_bulletproofs_prover_context *prover_ctx, unsigned char *proof, const secp256k1_bulletproofs_generators *gens, const secp256k1_ge *commit, unsigned int value, const unsigned char *nonce, int nbits)
+ssize_t secp256k1_bulletproofs_rangeproof_step0(secp256k1_bulletproofs_prover_context *prover_ctx, unsigned char *proof, const secp256k1_bulletproofs_generators *gens, const void *commit, unsigned int value, const unsigned char *nonce, int nbits)
 {
-	secp256k1_pedersen_commitment pedersen_commit;
-	secp256k1_ge commitp;
-	secp256k1_scalar blinds, enc_datas;
+	secp256k1_scalar enc_datas;
 	secp256k1_ge h;
 
 	secp256k1_generator_load(&h, secp256k1_generator_h);
-
-	pedersen_commit.data[0] = secp256k1_fe_is_odd(&commit->y) ? SECP256K1_TAG_PUBKEY_ODD : SECP256K1_TAG_PUBKEY_EVEN;
-	secp256k1_fe_get_b32(&pedersen_commit.data[1], &commit->x);
-	secp256k1_pedersen_commitment_load(&commitp, &pedersen_commit);
 
 	secp256k1_scalar_clear(&enc_datas);
 
@@ -451,7 +445,7 @@ ssize_t secp256k1_bulletproofs_rangeproof_step0(secp256k1_bulletproofs_prover_co
 		nbits,
 		value,
 		0,	// min_value
-		&commitp,
+		commit,
 		&h,
 		&secp256k1_ge_const_g,
 		gens,
@@ -472,7 +466,7 @@ ssize_t secp256k1_bulletproofs_rangeproof_step1(secp256k1_bulletproofs_prover_co
 
 	int ret = secp256k1_bulletproofs_rangeproof_uncompressed_prove_step1_impl(
 		prover_ctx,
-		&proof[65],
+		proof,
 		nbits,
 		value,
 		0,		// min_value
@@ -482,19 +476,18 @@ ssize_t secp256k1_bulletproofs_rangeproof_step1(secp256k1_bulletproofs_prover_co
 		challenge);
 	if (!ret)
 		return -1;
-	return 130 - 65;
+	return 65;
 }
 
-ssize_t secp256k1_bulletproofs_rangeproof_step2(secp256k1_bulletproofs_prover_context *prover_ctx, unsigned char *proof, unsigned int value, const secp256k1_scalar *blind, const unsigned char *challenge, const unsigned char *nonce, int nbits)
+ssize_t secp256k1_bulletproofs_rangeproof_step2(secp256k1_bulletproofs_prover_context *prover_ctx, unsigned char *proof, unsigned int value, const void *blind, const unsigned char *challenge, const unsigned char *nonce, int nbits)
 {
 	secp256k1_scalar enc_datas;
-	int overflow;
 
 	secp256k1_scalar_clear(&enc_datas);
 
 	int ret = secp256k1_bulletproofs_rangeproof_uncompressed_prove_step2_impl(
 		prover_ctx,
-		&proof[130],
+		proof,
 		nonce,
 		blind,
 		&enc_datas,
@@ -502,10 +495,12 @@ ssize_t secp256k1_bulletproofs_rangeproof_step2(secp256k1_bulletproofs_prover_co
 	if (!ret)
 		return -1;
 
+	int proof_size = 64;	// step2 returns (tau, mu) in 64 bytes
+
 	for (int i = 0; i < nbits; i++) {
 		ret = secp256k1_bulletproofs_rangeproof_uncompressed_prove_step3_impl(
 			prover_ctx,
-			&proof[194 + 64 * i],
+			&proof[proof_size],
 			i,
 			value,
 			0,		// min_value
@@ -513,9 +508,10 @@ ssize_t secp256k1_bulletproofs_rangeproof_step2(secp256k1_bulletproofs_prover_co
 			challenge);
 		if (!ret)
 			return -1;
+		proof_size += 64;
 	}
 
-	return 194 + 64 * nbits - 130;
+	return proof_size;
 }
 
 #endif
