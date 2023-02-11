@@ -511,6 +511,19 @@ ssize_t secp256k1_bulletproofs_rangeproof_step2(secp256k1_bulletproofs_prover_co
 		proof_size += 64;
 	}
 
+	/*
+	  secp256k1_scalar lr, l, r, t;
+	  secp256k1_scalar_clear(&lr);
+	  for (int i = 0; i < nbits; i++) {
+	  int overflow;
+	  secp256k1_scalar_set_b32(&l, &proof[64 + 64 * i], &overflow);
+	  secp256k1_scalar_set_b32(&r, &proof[64 + 64 * i + 32], &overflow);
+	  secp256k1_scalar_mul(&t, &l, &r);
+	  secp256k1_scalar_add(&lr, &lr, &t);
+	  }
+	  print_s(&lr, "Th");
+	*/
+
 	return proof_size;
 }
 

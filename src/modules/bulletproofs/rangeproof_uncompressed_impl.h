@@ -7,7 +7,7 @@
 #ifndef _SECP256K1_MODULE_BULLETPROOFS_RP_UNCOMPRESSED_
 #define _SECP256K1_MODULE_BULLETPROOFS_RP_UNCOMPRESSED_
 
-#define DEBUG_PRINT 1
+#define DEBUG_PRINT 0
 
 #include "group.h"
 #include "scalar.h"
@@ -89,8 +89,10 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
     int overflow;
     unsigned char nbits1 = (unsigned char)n_bits;
 
+#if DEBUG_PRINT
     print_g(g, "g");
     print_g(h, "h");
+#endif
 
     memset(prover_ctx->data, 0, sizeof(prover_ctx->data));
     memset(output, 0, 65);
@@ -131,9 +133,10 @@ static int secp256k1_bulletproofs_rangeproof_uncompressed_prove_step0_impl(
         secp256k1_fe_cmov(&aterm.x, &gens->gens[2 * i].x, al);
         secp256k1_fe_cmov(&aterm.y, &gens->gens[2 * i].y, al);
         secp256k1_gej_add_ge(&gej, &gej, &aterm);
-
+#if DEBUG_PRINT
 	print_g(&gens->gens[2 * i], "G");
 	print_g(&gens->gens[2 * i + 1], "H");
+#endif
     }
     secp256k1_ge_set_gej(&ge, &gej);
     secp256k1_fe_normalize_var(&ge.x);
